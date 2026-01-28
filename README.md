@@ -1,245 +1,128 @@
-# Azure Container Apps - Java Todo API
+# Quarkus PostgreSQL on Azure Container Apps
 
-A Quarkus-based Todo API deployed to Azure Container Apps using Terraform and Azure Developer CLI (azd).
+A Quarkus application for todo management, deployed to Azure Container Apps with PostgreSQL database. Features Infrastructure as Code (IaC) with Terraform and streamlined deployment via Azure Developer CLI.
+
+## Features
+
+- **RESTful API**: Quarkus-based todo management system with full CRUD operations
+- **Database**: Azure Database for PostgreSQL Flexible Server with Hibernate ORM Panache
+- **Container Orchestration**: Azure Container Apps with auto-scaling capabilities
+- **Infrastructure as Code**: Terraform modules for reproducible infrastructure
+- **Java 21**: Modern Java runtime with Quarkus 3.18.4 framework
+- **Native Compilation**: Support for GraalVM native image builds
 
 ## Architecture
 
+![Architecture Diagram](images/architecture.png)
+
+### High-Level Components
+
+1. **Azure Container Apps**: Hosts the Quarkus application with auto-scaling
+2. **Azure PostgreSQL Flexible Server**: Managed database with automated backups
+3. **Azure Container Registry**: Private registry for Docker images
+
+### Application Structure
+
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                        Azure Resource Group                    │
-│                                                                │
-│  ┌──────────────────┐    ┌──────────────────────────────────┐  │
-│  │ Container        │    │ Container Apps Environment       │  │
-│  │ Registry (ACR)   │───▶│                                  │  │
-│  └──────────────────┘    │  ┌─────────────────────────────┐ │  │
-│                          │  │ Backend Container App       │ │  │
-│                          │  │ (Quarkus Todo API)          │ │  │
-│                          |  |                             | |  |
-│                          │  └─────────────────────────────┘ │  │
-│                          └──────────────────────────────────┘  │
-│                                         │                      │
-│                                         ▼                      │
-│                          ┌──────────────────────────────────┐  │
-│                          │ PostgreSQL Flexible Server       │  │
-│                          │ - Database: todo                 │  │
-│                          └──────────────────────────────────┘  │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Log Analytics Workspace                                  │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────┘
+src/backend/
+├── src/main/java/com/example/demo/
+│   ├── TodoResource.java    # REST API endpoints
+│   └── Todo.java            # JPA entity with Panache
+├── src/main/resources/
+│   └── application.properties   # Quarkus configuration
+├── pom.xml                  # Maven dependencies
+└── Dockerfile               # Container image definition
+
+infra/
+├── main.tf              # Root Terraform module
+└── modules/
+    ├── postgresql/      # PostgreSQL Flexible Server
+    ├── container-apps/  # Container Apps environment
+    ├── container-registry/  # Azure Container Registry
+    └── resource-group/  # Resource group
 ```
+
+**Architecture Pattern**: Active Record pattern with Quarkus Panache:
+
+- API Layer ([TodoResource.java](src/backend/src/main/java/com/example/demo/TodoResource.java)) → Entity Layer ([Todo.java](src/backend/src/main/java/com/example/demo/Todo.java))
 
 ## Prerequisites
 
-- [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli)
-- [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-- [Terraform](https://www.terraform.io/downloads) >= 1.0
-- [Docker](https://www.docker.com/get-started)
-- [Java 21](https://adoptium.net/) (for local development)
-- [Maven](https://maven.apache.org/) (for local development)
+> This template will create infrastructure and deploy code to Azure. If you don't have an Azure Subscription, you can sign up for a [free account here](https://azure.microsoft.com/free/). Make sure you have contributor role to the Azure subscription.
 
-## Project Structure
+### Required Tools
 
-```
-.
-├── azure.yaml                 # Azure Developer CLI configuration
-├── infra/                     # Terraform infrastructure
-│   ├── main.tf               # Main configuration using modules
-│   ├── variables.tf          # Input variables
-│   ├── outputs.tf            # Output values
-│   ├── main.tfvars.json      # azd parameter file
-│   └── modules/              # Terraform modules
-│       ├── resource-group/   # Resource group module
-│       ├── container-registry/# ACR module
-│       ├── postgresql/       # PostgreSQL module
-│       └── container-apps/   # Container Apps module
-└── src/
-    └── backend/              # Quarkus application
-        ├── Dockerfile
-        ├── pom.xml
-        └── src/
-            └── main/
-                ├── java/     # Java source code
-                └── resources/# Application configuration
-```
+- [Azure Developer CLI](https://aka.ms/azd-install) (v1.5.0+)
+- [Terraform CLI](https://aka.ms/azure-dev/terraform-install) (v1.5.0+)
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
+- [Docker](https://docs.docker.com/get-docker/)
 
 ## Quick Start
 
-### 1. Login to Azure
+### Deploy to Azure
+
+The fastest way to get started is using Azure Developer CLI:
 
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd quarkus-postgres-aca
+
+# Login to Azure
 azd auth login
-```
 
-### 2. Build the Application Locally
-
-```bash
-cd src/backend
-./mvnw package -DskipTests
-cd ../..
-```
-
-### 3. Deploy to Azure
-
-```bash
+# Provision infrastructure and deploy application
 azd up
 ```
 
 This command will:
 
-1. Prompt for environment name and Azure location
-2. Provision all Azure resources using Terraform
-3. Build and push the Docker image to ACR
-4. Deploy the application to Container Apps
+1. Prompt for environment name, subscription, and Azure region
+2. Create all required Azure resources via Terraform
+3. Build and push the Docker image to Azure Container Registry
+4. Deploy the container to Azure Container Apps
 
-### 4. Access the Application
+![Deployment Prompt](images/azd-up-start.jpg)
 
-After deployment, the API will be available at the URL shown in the output:
+Once complete, you'll see the provisioned resources and the application URL:
 
-```
-BACKEND_URI = "https://backend.<unique-id>.azurecontainerapps.io"
-```
+![Provisioned Resources](images/azd-up-complete.jpg)
 
 ## API Endpoints
 
-| Method | Endpoint   | Description       |
-| ------ | ---------- | ----------------- |
-| GET    | /api/todos | List all todos    |
-| POST   | /api/todos | Create a new todo |
+### Available Endpoints
 
-### Example Usage
+| Method | Endpoint          | Description         |
+| ------ | ----------------- | ------------------- |
+| POST   | `/api/todos`      | Create a new todo   |
+| GET    | `/api/todos`      | List all todos      |
+| GET    | `/api/todos/{id}` | Get todo by ID      |
+| PUT    | `/api/todos/{id}` | Update todo details |
+| DELETE | `/api/todos/{id}` | Delete a todo       |
 
-```bash
-# Get all todos
-curl https://backend.<unique-id>.azurecontainerapps.io/api/todos
-
-# Create a todo
-curl -X POST https://backend.<unique-id>.azurecontainerapps.io/api/todos \
-  -H "Content-Type: application/json" \
-  -d '{"description": "Learn Azure", "details": "Deploy apps to ACA"}'
-```
-
-## Infrastructure Modules
-
-### resource-group
-
-Creates an Azure Resource Group to contain all resources.
-
-### container-registry
-
-Provisions Azure Container Registry (ACR) for storing Docker images.
-
-### postgresql
-
-Deploys Azure Database for PostgreSQL Flexible Server with:
-
-- Auto-generated secure password
-- Firewall rule for Azure services
-- Database named `todo`
-
-### container-apps
-
-Creates the Container Apps environment and application with:
-
-- Log Analytics workspace for monitoring
-- Ingress configuration for external access
-- Environment variables for database connection
-- Auto-scaling (0-3 replicas)
-
-## Local Development
-
-### Run PostgreSQL locally
+## Destroy Resources
 
 ```bash
-docker run -d \
-  --name postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=todo \
-  -p 5432:5432 \
-  postgres:16
-```
-
-### Run the application
-
-```bash
-cd src/backend
-./mvnw quarkus:dev
-```
-
-The API will be available at `http://localhost:8080/api/todos`
-
-## Environment Variables
-
-| Variable                                  | Description                | Default                               |
-| ----------------------------------------- | -------------------------- | ------------------------------------- |
-| QUARKUS_DATASOURCE_JDBC_URL               | PostgreSQL connection URL  | jdbc:postgresql://localhost:5432/todo |
-| QUARKUS_DATASOURCE_USERNAME               | Database username          | postgres                              |
-| QUARKUS_DATASOURCE_PASSWORD               | Database password          | postgres                              |
-| QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION | Schema generation strategy | drop-and-create (dev) / update (prod) |
-
-## Commands Reference
-
-```bash
-# Deploy everything
-azd up
-
-# Provision infrastructure only
-azd provision
-
-# Deploy application only (after code changes)
-azd deploy
-
-# View deployed resources
-azd show
-
-# Tear down all resources
-azd down
-
-# View logs
-azd monitor --logs
-```
-
-## Troubleshooting
-
-### Build fails with Java version error
-
-Ensure you're using Java 21:
-
-```bash
-java -version
-export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"
-```
-
-### Container App fails to start
-
-Check the logs:
-
-```bash
-az containerapp logs show \
-  --name backend \
-  --resource-group <resource-group> \
-  --follow
-```
-
-### Database connection issues
-
-Verify the PostgreSQL firewall allows Azure services:
-
-```bash
-az postgres flexible-server firewall-rule list \
-  --resource-group <resource-group> \
-  --name <server-name>
-```
-
-## Clean Up
-
-To delete all Azure resources:
-
-```bash
+# Remove all Azure resources
 azd down
 ```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Additional Resources
+
+- [Quarkus Documentation](https://quarkus.io/guides/)
+- [Quarkus Hibernate ORM Panache](https://quarkus.io/guides/hibernate-orm-panache)
+- [Azure Container Apps Documentation](https://learn.microsoft.com/azure/container-apps/)
+- [Azure PostgreSQL Flexible Server](https://learn.microsoft.com/azure/postgresql/flexible-server/)
+- [Terraform Azure Provider](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
