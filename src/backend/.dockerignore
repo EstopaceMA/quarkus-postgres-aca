@@ -1,3 +1,16 @@
-# Include only built artifacts
-*
+# Ignore build artifacts and IDE files
+target/
 !target/quarkus-app/
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore docs
+*.md

@@ -13,7 +13,7 @@ RUN mvn dependency:go-offline -B
 
 # Copy source code and build
 COPY src ./src
-RUN mvn package -DskipTests -B
+RUN mvn package -DskipTests -Dquarkus.container-image.build=false -B
 
 # Stage 2: Runtime image
 FROM mcr.microsoft.com/openjdk/jdk:21-ubuntu
